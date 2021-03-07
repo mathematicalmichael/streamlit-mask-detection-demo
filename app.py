@@ -1,3 +1,10 @@
+'''
+Real-time mask detection using MobileNet SSD.
+
+Forked from https://github.com/whitphx/streamlit-webrtc-example.
+
+'''
+
 import logging
 import logging.handlers
 import queue
@@ -81,155 +88,32 @@ WEBRTC_CLIENT_SETTINGS = ClientSettings(
 
 
 def main():
-    st.header("WebRTC demo")
+    st.header("Real-time Mask Detection Demo")
 
-    object_detection_page = "Real time object detection (sendrecv)"
-    video_filters_page = (
-        "Real time video transform with simple OpenCV filters (sendrecv)"
-    )
-    streaming_page = (
-        "Consuming media files on server-side and streaming it to browser (recvonly)"
-    )
-    sendonly_page = "WebRTC is sendonly and images are shown via st.image() (sendonly)"
-    loopback_page = "Simple video loopback (sendrecv)"
-    app_mode = st.sidebar.selectbox(
-        "Choose the app mode",
-        [
-            object_detection_page,
-            video_filters_page,
-            streaming_page,
-            sendonly_page,
-            loopback_page,
-        ],
-    )
-    st.subheader(app_mode)
-
-    if app_mode == video_filters_page:
-        app_video_filters()
-    elif app_mode == object_detection_page:
-        app_object_detection()
-    elif app_mode == streaming_page:
-        app_streaming()
-    elif app_mode == sendonly_page:
-        app_sendonly()
-    elif app_mode == loopback_page:
-        app_loopback()
-
-
-def app_loopback():
-    """ Simple video loopback """
-    webrtc_streamer(
-        key="loopback",
-        mode=WebRtcMode.SENDRECV,
-        client_settings=WEBRTC_CLIENT_SETTINGS,
-        video_transformer_factory=None,  # NoOp
-    )
-
-
-def app_video_filters():
-    """ Video transforms with OpenCV """
-
-    class OpenCVVideoTransformer(VideoTransformerBase):
-        type: Literal["noop", "cartoon", "edges", "rotate"]
-
-        def __init__(self) -> None:
-            self.type = "noop"
-
-        def transform(self, frame: av.VideoFrame) -> av.VideoFrame:
-            img = frame.to_ndarray(format="bgr24")
-
-            if self.type == "noop":
-                pass
-            elif self.type == "cartoon":
-                # prepare color
-                img_color = cv2.pyrDown(cv2.pyrDown(img))
-                for _ in range(6):
-                    img_color = cv2.bilateralFilter(img_color, 9, 9, 7)
-                img_color = cv2.pyrUp(cv2.pyrUp(img_color))
-
-                # prepare edges
-                img_edges = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-                img_edges = cv2.adaptiveThreshold(
-                    cv2.medianBlur(img_edges, 7),
-                    255,
-                    cv2.ADAPTIVE_THRESH_MEAN_C,
-                    cv2.THRESH_BINARY,
-                    9,
-                    2,
-                )
-                img_edges = cv2.cvtColor(img_edges, cv2.COLOR_GRAY2RGB)
-
-                # combine color and edges
-                img = cv2.bitwise_and(img_color, img_edges)
-            elif self.type == "edges":
-                # perform edge detection
-                img = cv2.cvtColor(cv2.Canny(img, 100, 200), cv2.COLOR_GRAY2BGR)
-            elif self.type == "rotate":
-                # rotate image
-                rows, cols, _ = img.shape
-                M = cv2.getRotationMatrix2D((cols / 2, rows / 2), frame.time * 45, 1)
-                img = cv2.warpAffine(img, M, (cols, rows))
-
-            return img
-
-    webrtc_ctx = webrtc_streamer(
-        key="opencv-filter",
-        mode=WebRtcMode.SENDRECV,
-        client_settings=WEBRTC_CLIENT_SETTINGS,
-        video_transformer_factory=OpenCVVideoTransformer,
-        async_transform=True,
-    )
-
-    transform_type = st.radio(
-        "Select transform type", ("noop", "cartoon", "edges", "rotate")
-    )
-    if webrtc_ctx.video_transformer:
-        webrtc_ctx.video_transformer.type = transform_type
-
-    st.markdown(
-        "This demo is based on "
-        "https://github.com/aiortc/aiortc/blob/2362e6d1f0c730a0f8c387bbea76546775ad2fe8/examples/server/server.py#L34. "  # noqa: E501
-        "Many thanks to the project."
-    )
+    app_object_detection()
 
 
 def app_object_detection():
-    """Object detection demo with MobileNet SSD.
-    This model and code are based on
-    https://github.com/robmarkcole/object-detection-app
     """
-    MODEL_URL = "https://github.com/robmarkcole/object-detection-app/raw/master/model/MobileNetSSD_deploy.caffemodel"  # noqa: E501
-    MODEL_LOCAL_PATH = HERE / "./models/MobileNetSSD_deploy.caffemodel"
-    PROTOTXT_URL = "https://github.com/robmarkcole/object-detection-app/raw/master/model/MobileNetSSD_deploy.prototxt.txt"  # noqa: E501
-    PROTOTXT_LOCAL_PATH = HERE / "./models/MobileNetSSD_deploy.prototxt.txt"
+    Object detection with MobileNet SSD.
+    Code is a combination of https://github.com/whitphx/streamlit-webrtc-example and
+    https://github.com/sem-onyalo/video-object-detection 
+    """
+
+    MODEL_URL = "https://github.com/sem-onyalo/video-object-detection/raw/master/models/mobilenet_ssd_v1_mask/frozen_inference_graph.pb"
+    MODEL_LOCAL_PATH = HERE / "./models/frozen_inference_graph.pb"
+    PROTOTXT_URL = "https://github.com/sem-onyalo/video-object-detection/raw/master/models/mobilenet_ssd_v1_mask/ssd_mobilenet_v1_mask_2021_01_12.pbtxt"
+    PROTOTXT_LOCAL_PATH = HERE / "./models/ssd_mobilenet_v1_mask_2021_01_12.pbtxt"
 
     CLASSES = [
         "background",
-        "aeroplane",
-        "bicycle",
-        "bird",
-        "boat",
-        "bottle",
-        "bus",
-        "car",
-        "cat",
-        "chair",
-        "cow",
-        "diningtable",
-        "dog",
-        "horse",
-        "motorbike",
-        "person",
-        "pottedplant",
-        "sheep",
-        "sofa",
-        "train",
-        "tvmonitor",
+        "mask",
+        "no mask"
     ]
     COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
-    download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564)
-    download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=29353)
+    download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=22680303)
+    download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=70083)
 
     DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
@@ -242,9 +126,11 @@ def app_object_detection():
         result_queue: "queue.Queue[List[Detection]]"
 
         def __init__(self) -> None:
-            self._net = cv2.dnn.readNetFromCaffe(
-                str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH)
+
+            self._net = cv2.dnn.readNetFromTensorflow(
+                str(MODEL_LOCAL_PATH), str(PROTOTXT_LOCAL_PATH)
             )
+            
             self.confidence_threshold = DEFAULT_CONFIDENCE_THRESHOLD
             self.result_queue = queue.Queue()
 
@@ -322,92 +208,6 @@ def app_object_detection():
                 while True:
                     result = webrtc_ctx.video_transformer.result_queue.get()
                     labels_placeholder.table(result)
-
-    st.markdown(
-        "This demo uses a model and code from "
-        "https://github.com/robmarkcole/object-detection-app. "
-        "Many thanks to the project."
-    )
-
-
-def app_streaming():
-    """ Media streamings """
-    MEDIAFILES = {
-        "big_buck_bunny_720p_2mb.mp4": {
-            "url": "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_2mb.mp4",  # noqa: E501
-            "local_file_path": HERE / "data/big_buck_bunny_720p_2mb.mp4",
-            "type": "video",
-        },
-        "big_buck_bunny_720p_10mb.mp4": {
-            "url": "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_10mb.mp4",  # noqa: E501
-            "local_file_path": HERE / "data/big_buck_bunny_720p_10mb.mp4",
-            "type": "video",
-        },
-        "file_example_MP3_700KB.mp3": {
-            "url": "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_700KB.mp3",  # noqa: E501
-            "local_file_path": HERE / "data/file_example_MP3_700KB.mp3",
-            "type": "audio",
-        },
-        "file_example_MP3_5MG.mp3": {
-            "url": "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_5MG.mp3",  # noqa: E501
-            "local_file_path": HERE / "data/file_example_MP3_5MG.mp3",
-            "type": "audio",
-        },
-    }
-    media_file_label = st.radio(
-        "Select a media file to stream", tuple(MEDIAFILES.keys())
-    )
-    media_file_info = MEDIAFILES[media_file_label]
-    download_file(media_file_info["url"], media_file_info["local_file_path"])
-
-    def create_player():
-        return MediaPlayer(str(media_file_info["local_file_path"]))
-
-        # NOTE: To stream the video from webcam, use the code below.
-        # return MediaPlayer(
-        #     "1:none",
-        #     format="avfoundation",
-        #     options={"framerate": "30", "video_size": "1280x720"},
-        # )
-
-    WEBRTC_CLIENT_SETTINGS.update(
-        {
-            "media_stream_constraints": {
-                "video": media_file_info["type"] == "video",
-                "audio": media_file_info["type"] == "audio",
-            }
-        }
-    )
-
-    webrtc_streamer(
-        key=f"media-streaming-{media_file_label}",
-        mode=WebRtcMode.RECVONLY,
-        client_settings=WEBRTC_CLIENT_SETTINGS,
-        player_factory=create_player,
-    )
-
-
-def app_sendonly():
-    """A sample to use WebRTC in sendonly mode to transfer frames
-    from the browser to the server and to render frames via `st.image`."""
-    webrtc_ctx = webrtc_streamer(
-        key="loopback",
-        mode=WebRtcMode.SENDONLY,
-        client_settings=WEBRTC_CLIENT_SETTINGS,
-    )
-
-    if webrtc_ctx.video_receiver:
-        image_loc = st.empty()
-        while True:
-            try:
-                frame = webrtc_ctx.video_receiver.get_frame(timeout=1)
-            except queue.Empty:
-                print("Queue is empty. Stop the loop.")
-                webrtc_ctx.video_receiver.stop()
-                break
-
-            img_rgb = frame.to_ndarray(format="rgb24")
-            image_loc.image(img_rgb)
 
 
 if __name__ == "__main__":
