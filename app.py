@@ -88,7 +88,7 @@ WEBRTC_CLIENT_SETTINGS = ClientSettings(
 
 
 def main():
-    st.header("Real-time Mask Detection Demo")
+    st.header("Real-Time Mask Detection Demo")
 
     app_object_detection()
 

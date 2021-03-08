@@ -1,10 +1,8 @@
 # streamlit-mask-detection-demo
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/whitphx/streamlit-webrtc-example/main/app.py)
+<!-- [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/whitphx/streamlit-webrtc-example/main/app.py) -->
 
-Sample page hosted on Heroku: https://streamlit-webrtc-example.herokuapp.com/
-
-The Deployment is automated with GitHub actions: [./.github/workflows/heroku.yml](./.github/workflows/heroku.yml)
+Sample page hosted on Heroku: https://sleepy-falls-46622.herokuapp.com/
 
 ## Manual deployment to heroku
 ### Prerequisites
