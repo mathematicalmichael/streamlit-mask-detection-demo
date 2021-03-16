@@ -83,12 +83,12 @@ def download_file(url, download_to: Path, expected_size=None):
 
 WEBRTC_CLIENT_SETTINGS = ClientSettings(
     rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-    media_stream_constraints={"video": True, "audio": True},
+    media_stream_constraints={"video": True, "audio": False},
 )
 
 
 def main():
-    st.header("Real-Time Mask Detection Demo")
+    st.header("Mask Detector")
 
     app_object_detection()
 
@@ -110,12 +110,16 @@ def app_object_detection():
         "mask",
         "no mask"
     ]
-    COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
+    COLORS = [
+        (255, 255, 255),
+        (0, 255, 0),
+        (0, 0, 255)
+    ]
 
     download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=22680303)
     download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=70083)
 
-    DEFAULT_CONFIDENCE_THRESHOLD = 0.5
+    DEFAULT_CONFIDENCE_THRESHOLD = 0.7
 
     class Detection(NamedTuple):
         name: str
@@ -191,23 +195,11 @@ def app_object_detection():
     )
 
     confidence_threshold = st.slider(
-        "Confidence threshold", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
+        "Detector Accuracy (%)", 0, 100, int(DEFAULT_CONFIDENCE_THRESHOLD * 100), 5
     )
-    if webrtc_ctx.video_transformer:
-        webrtc_ctx.video_transformer.confidence_threshold = confidence_threshold
 
-    if st.checkbox("Show the detected labels", value=True):
-        if webrtc_ctx.state.playing:
-            labels_placeholder = st.empty()
-            # NOTE: The video transformation with object detection and
-            # this loop displaying the result labels are running
-            # in different threads asynchronously.
-            # Then the rendered video frames and the labels displayed here
-            # are not strictly synchronized.
-            if webrtc_ctx.video_transformer:
-                while True:
-                    result = webrtc_ctx.video_transformer.result_queue.get()
-                    labels_placeholder.table(result)
+    if webrtc_ctx.video_transformer:
+        webrtc_ctx.video_transformer.confidence_threshold = confidence_threshold / 100
 
 
 if __name__ == "__main__":
